@@ -90,6 +90,33 @@ Common n8n environment variables:
 
 For more environment variables, see the [official n8n documentation](https://docs.n8n.io/hosting/configuration/environment-variables/).
 
+## Custom Certificates
+
+This image supports custom SSL certificates for enterprise environments with self-signed or internal certificate authorities.
+
+To use custom certificates, mount them to `/opt/custom-certificates`:
+
+```bash
+docker run -it --rm \
+  -p 5678:5678 \
+  -v /path/to/your/certificates:/opt/custom-certificates \
+  -v n8n_data:/home/node/.n8n \
+  ghcr.io/gizmotickler/n8n-playwright-debian:latest
+```
+
+Or with Docker Compose:
+
+```yaml
+services:
+  n8n:
+    image: ghcr.io/gizmotickler/n8n-playwright-debian:latest
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /path/to/your/certificates:/opt/custom-certificates
+```
+
+The entrypoint script will automatically configure Node.js to trust these certificates.
+
 ## GitHub Container Registry
 
 Images are automatically built and published to GitHub Container Registry (GHCR) on:

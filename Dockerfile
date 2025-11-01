@@ -57,6 +57,10 @@ RUN npm install -g n8n@${N8N_VERSION}
 RUN npm install -g playwright && \
     npx playwright install chromium --with-deps
 
+# Copy and set up entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Create necessary directories and set permissions
 RUN mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node
@@ -74,5 +78,8 @@ VOLUME ["/home/node/.n8n"]
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5678/healthz || exit 1
 
-# Start n8n
-CMD ["n8n"]
+# Set entrypoint
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+# Default command (can be overridden)
+CMD []
