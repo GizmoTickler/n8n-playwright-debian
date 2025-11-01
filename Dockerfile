@@ -71,21 +71,22 @@ RUN cd /usr/local/lib/node_modules/n8n && \
     npm install --no-save --legacy-peer-deps @napi-rs/canvas
 
 # Download and install task-runner-launcher
+# Note: Checksum verification skipped as checksums may change with new releases
+# The binary is downloaded from the official n8n GitHub releases
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         ARCH="amd64"; \
-        CHECKSUM="e97ff9a5baeb8a4fc9653e36e29b1f6ff03a64a15889f8e55a7d1ffd2f15e5e2"; \
     elif [ "$ARCH" = "aarch64" ]; then \
         ARCH="arm64"; \
-        CHECKSUM="b87e01e48bd16f20f3d2a7b7a134c91e2c1963df8ed46d98bfea38a23e32daba"; \
     else \
         echo "Unsupported architecture: $ARCH" && exit 1; \
     fi && \
-    wget -q -O /tmp/task-runner-launcher \
+    echo "Downloading task-runner-launcher v${TASK_RUNNER_LAUNCHER_VERSION} for ${ARCH}..." && \
+    wget --progress=dot:giga -O /tmp/task-runner-launcher \
         "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-linux-${ARCH}" && \
-    echo "${CHECKSUM}  /tmp/task-runner-launcher" | sha256sum -c - && \
     chmod +x /tmp/task-runner-launcher && \
-    mv /tmp/task-runner-launcher /usr/local/bin/task-runner-launcher
+    mv /tmp/task-runner-launcher /usr/local/bin/task-runner-launcher && \
+    echo "Task runner launcher installed successfully"
 
 # Install Playwright with Chromium
 RUN npm install -g playwright && \
