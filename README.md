@@ -4,10 +4,17 @@ Custom n8n Docker image based on Debian with Playwright and Chromium pre-install
 
 ## Features
 
-- **Base Image**: Debian Bookworm (node:22-bookworm-slim)
+- **Base Image**: Debian Trixie (node:22-trixie)
 - **n8n**: Latest version installed globally
 - **Playwright**: Pre-installed with Chromium browser
 - **Platform Support**: linux/amd64 and linux/arm64
+- **Additional Tools**:
+  - GraphicsMagick for image processing
+  - jq for JSON processing
+  - SSH client for git operations
+  - Tini for proper signal handling
+  - Custom SSL certificate support
+  - Full timezone data (tzdata)
 
 ## Quick Start
 

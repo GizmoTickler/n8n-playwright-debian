@@ -16,10 +16,17 @@ RUN apt-get update && \
     wget \
     git \
     gnupg \
+    openssh-client \
+    openssl \
+    tzdata \
+    tini \
+    jq \
     # n8n dependencies
     python3 \
     python3-pip \
     build-essential \
+    graphicsmagick \
+    libxml2 \
     # Playwright/Chrome dependencies
     libglib2.0-0 \
     libnss3 \
@@ -78,8 +85,8 @@ VOLUME ["/home/node/.n8n"]
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5678/healthz || exit 1
 
-# Set entrypoint
-ENTRYPOINT ["/docker-entrypoint.sh"]
+# Use tini as init system for proper signal handling
+ENTRYPOINT ["/usr/bin/tini", "--", "/docker-entrypoint.sh"]
 
 # Default command (can be overridden)
 CMD []
