@@ -3,7 +3,10 @@ FROM node:22-trixie
 
 # Set environment variables
 ENV N8N_VERSION=latest \
+    NODE_VERSION=22 \
+    TASK_RUNNER_LAUNCHER_VERSION=1.4.0 \
     NODE_ENV=production \
+    NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
@@ -16,10 +19,17 @@ RUN apt-get update && \
     wget \
     git \
     gnupg \
+    openssh-client \
+    openssl \
+    tzdata \
+    tini \
+    jq \
     # n8n dependencies
     python3 \
     python3-pip \
     build-essential \
+    graphicsmagick \
+    libxml2 \
     # Playwright/Chrome dependencies
     libglib2.0-0 \
     libnss3 \
@@ -47,35 +57,70 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create n8n user
-RUN useradd -m -u 1000 -s /bin/bash n8n
+# Set working directory (using existing node user from base image)
+WORKDIR /home/node
 
-# Set working directory
-WORKDIR /home/n8n
+# Install n8n globally and full-icu for internationalization
+RUN npm install -g n8n@${N8N_VERSION} full-icu
 
-# Install n8n globally
-RUN npm install -g n8n@${N8N_VERSION}
+# Rebuild native modules for the platform
+RUN cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 && \
+    npm install --no-save --legacy-peer-deps @napi-rs/canvas && \
+    cd node_modules/pdfjs-dist && \
+    npm install --no-save --legacy-peer-deps @napi-rs/canvas
+
+# Download and install task-runner-launcher
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        ARCH="amd64"; \
+        CHECKSUM="f4831a3859c4551597925a5f62fa544ef06733b2f875b612745ee458321c75e7"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        ARCH="arm64"; \
+        CHECKSUM="1e9a37cfff1d5a631edbd4610e84d78b8d680a2e4731a7a7b9e18edddf6fae37"; \
+    else \
+        echo "Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    echo "Downloading task-runner-launcher v${TASK_RUNNER_LAUNCHER_VERSION} for ${ARCH}..." && \
+    wget --progress=dot:giga -O /tmp/task-runner-launcher.tar.gz \
+        "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-${ARCH}.tar.gz" && \
+    echo "Verifying checksum..." && \
+    echo "${CHECKSUM}  /tmp/task-runner-launcher.tar.gz" | sha256sum -c - && \
+    echo "Extracting archive..." && \
+    tar -xzf /tmp/task-runner-launcher.tar.gz -C /tmp && \
+    chmod +x /tmp/task-runner-launcher && \
+    mv /tmp/task-runner-launcher /usr/local/bin/task-runner-launcher && \
+    rm /tmp/task-runner-launcher.tar.gz && \
+    echo "Task runner launcher installed successfully"
 
 # Install Playwright with Chromium
 RUN npm install -g playwright && \
     npx playwright install chromium --with-deps
 
-# Create necessary directories
-RUN mkdir -p /home/n8n/.n8n && \
-    chown -R n8n:n8n /home/n8n
+# Copy configuration and scripts
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY n8n-task-runners.json /etc/n8n-task-runners.json
+RUN chmod +x /docker-entrypoint.sh
 
-# Switch to n8n user
-USER n8n
+# Create necessary directories and set permissions
+RUN mkdir -p /home/node/.n8n && \
+    chown -R node:node /home/node
+
+# Switch to node user
+USER node
 
 # Expose n8n default port
 EXPOSE 5678
 
 # Set up volume for n8n data
-VOLUME ["/home/n8n/.n8n"]
+VOLUME ["/home/node/.n8n"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:5678/healthz || exit 1
 
-# Start n8n
-CMD ["n8n"]
+# Use tini as init system for proper signal handling
+ENTRYPOINT ["/usr/bin/tini", "--", "/docker-entrypoint.sh"]
+
+# Default command (can be overridden)
+CMD []

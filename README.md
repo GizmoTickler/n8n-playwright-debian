@@ -4,10 +4,22 @@ Custom n8n Docker image based on Debian with Playwright and Chromium pre-install
 
 ## Features
 
-- **Base Image**: Debian Bookworm (node:22-bookworm-slim)
+- **Base Image**: Debian Trixie (node:22-trixie)
 - **n8n**: Latest version installed globally
 - **Playwright**: Pre-installed with Chromium browser
 - **Platform Support**: linux/amd64 and linux/arm64
+- **Additional Tools**:
+  - GraphicsMagick for image processing
+  - jq for JSON processing
+  - SSH client for git operations
+  - Tini for proper signal handling
+  - Custom SSL certificate support
+  - Full timezone data (tzdata)
+- **Advanced Features**:
+  - Task Runner system for isolated JavaScript execution
+  - Native SQLite3 support (platform-optimized)
+  - PDF rendering with @napi-rs/canvas
+  - Full ICU internationalization data
 
 ## Quick Start
 
@@ -18,7 +30,7 @@ docker pull ghcr.io/gizmotickler/n8n-playwright-debian:latest
 
 docker run -it --rm \
   -p 5678:5678 \
-  -v n8n_data:/home/n8n/.n8n \
+  -v n8n_data:/home/node/.n8n \
   ghcr.io/gizmotickler/n8n-playwright-debian:latest
 ```
 
@@ -33,7 +45,7 @@ services:
     ports:
       - "5678:5678"
     volumes:
-      - n8n_data:/home/n8n/.n8n
+      - n8n_data:/home/node/.n8n
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=admin
@@ -89,6 +101,50 @@ Common n8n environment variables:
 - `WEBHOOK_URL`: Webhook URL for external access
 
 For more environment variables, see the [official n8n documentation](https://docs.n8n.io/hosting/configuration/environment-variables/).
+
+## Custom Certificates
+
+This image supports custom SSL certificates for enterprise environments with self-signed or internal certificate authorities.
+
+To use custom certificates, mount them to `/opt/custom-certificates`:
+
+```bash
+docker run -it --rm \
+  -p 5678:5678 \
+  -v /path/to/your/certificates:/opt/custom-certificates \
+  -v n8n_data:/home/node/.n8n \
+  ghcr.io/gizmotickler/n8n-playwright-debian:latest
+```
+
+Or with Docker Compose:
+
+```yaml
+services:
+  n8n:
+    image: ghcr.io/gizmotickler/n8n-playwright-debian:latest
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /path/to/your/certificates:/opt/custom-certificates
+```
+
+The entrypoint script will automatically configure Node.js to trust these certificates.
+
+## Task Runner System
+
+This image includes n8n's task runner system for secure JavaScript code execution:
+
+- **Isolated Execution**: JavaScript code runs in sandboxed environments
+- **Security**: Prevents dangerous operations like `eval()` and prototype pollution
+- **Resource Control**: Manages concurrent tasks, timeouts, and payload sizes
+- **Configuration**: Pre-configured via `/etc/n8n-task-runners.json`
+
+The task runner is automatically available and requires no additional setup. You can configure it using environment variables:
+
+```bash
+docker run -e N8N_RUNNERS_MAX_CONCURRENCY=5 \
+           -e N8N_RUNNERS_TASK_TIMEOUT=60 \
+           ghcr.io/gizmotickler/n8n-playwright-debian:latest
+```
 
 ## GitHub Container Registry
 
