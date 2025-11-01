@@ -3,7 +3,10 @@ FROM node:22-trixie
 
 # Set environment variables
 ENV N8N_VERSION=latest \
+    NODE_VERSION=22 \
+    TASK_RUNNER_LAUNCHER_VERSION=1.4.0 \
     NODE_ENV=production \
+    NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
@@ -57,15 +60,40 @@ RUN apt-get update && \
 # Set working directory (using existing node user from base image)
 WORKDIR /home/node
 
-# Install n8n globally
-RUN npm install -g n8n@${N8N_VERSION}
+# Install n8n globally and full-icu for internationalization
+RUN npm install -g n8n@${N8N_VERSION} full-icu
+
+# Rebuild native modules for the platform
+RUN cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 && \
+    npm install --no-save @napi-rs/canvas && \
+    cd node_modules/pdfjs-dist && \
+    npm install --no-save @napi-rs/canvas
+
+# Download and install task-runner-launcher
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        ARCH="amd64"; \
+        CHECKSUM="e97ff9a5baeb8a4fc9653e36e29b1f6ff03a64a15889f8e55a7d1ffd2f15e5e2"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        ARCH="arm64"; \
+        CHECKSUM="b87e01e48bd16f20f3d2a7b7a134c91e2c1963df8ed46d98bfea38a23e32daba"; \
+    else \
+        echo "Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    wget -q -O /tmp/task-runner-launcher \
+        "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-linux-${ARCH}" && \
+    echo "${CHECKSUM}  /tmp/task-runner-launcher" | sha256sum -c - && \
+    chmod +x /tmp/task-runner-launcher && \
+    mv /tmp/task-runner-launcher /usr/local/bin/task-runner-launcher
 
 # Install Playwright with Chromium
 RUN npm install -g playwright && \
     npx playwright install chromium --with-deps
 
-# Copy and set up entrypoint script
+# Copy configuration and scripts
 COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY n8n-task-runners.json /etc/n8n-task-runners.json
 RUN chmod +x /docker-entrypoint.sh
 
 # Create necessary directories and set permissions

@@ -1,0 +1,21 @@
+{
+  "runners": {
+    "javascript": {
+      "binPath": "/usr/local/bin/task-runner-launcher",
+      "cwd": "/home/node",
+      "launchFlags": "--no-node-snapshot --dns-result-order=ipv4first --max-old-space-size=1024 --security-revert=CVE-2023-46809 --disable-proto=throw",
+      "allowedEnv": [
+        "PATH",
+        "NODE_FUNCTION_ALLOW_BUILTIN",
+        "NODE_FUNCTION_ALLOW_EXTERNAL",
+        "N8N_RUNNERS_TASK_BROKER_URI",
+        "N8N_RUNNERS_MAX_PAYLOAD",
+        "N8N_RUNNERS_MAX_CONCURRENCY",
+        "N8N_RUNNERS_TASK_TIMEOUT",
+        "N8N_RUNNERS_HEARTBEAT_INTERVAL",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED",
+        "N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT"
+      ]
+    }
+  }
+}

@@ -15,6 +15,11 @@ Custom n8n Docker image based on Debian with Playwright and Chromium pre-install
   - Tini for proper signal handling
   - Custom SSL certificate support
   - Full timezone data (tzdata)
+- **Advanced Features**:
+  - Task Runner system for isolated JavaScript execution
+  - Native SQLite3 support (platform-optimized)
+  - PDF rendering with @napi-rs/canvas
+  - Full ICU internationalization data
 
 ## Quick Start
 
@@ -123,6 +128,23 @@ services:
 ```
 
 The entrypoint script will automatically configure Node.js to trust these certificates.
+
+## Task Runner System
+
+This image includes n8n's task runner system for secure JavaScript code execution:
+
+- **Isolated Execution**: JavaScript code runs in sandboxed environments
+- **Security**: Prevents dangerous operations like `eval()` and prototype pollution
+- **Resource Control**: Manages concurrent tasks, timeouts, and payload sizes
+- **Configuration**: Pre-configured via `/etc/n8n-task-runners.json`
+
+The task runner is automatically available and requires no additional setup. You can configure it using environment variables:
+
+```bash
+docker run -e N8N_RUNNERS_MAX_CONCURRENCY=5 \
+           -e N8N_RUNNERS_TASK_TIMEOUT=60 \
+           ghcr.io/gizmotickler/n8n-playwright-debian:latest
+```
 
 ## GitHub Container Registry
 
