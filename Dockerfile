@@ -66,9 +66,9 @@ RUN npm install -g n8n@${N8N_VERSION} full-icu
 # Rebuild native modules for the platform
 RUN cd /usr/local/lib/node_modules/n8n && \
     npm rebuild sqlite3 && \
-    npm install --no-save @napi-rs/canvas && \
+    npm install --no-save --legacy-peer-deps @napi-rs/canvas && \
     cd node_modules/pdfjs-dist && \
-    npm install --no-save @napi-rs/canvas
+    npm install --no-save --legacy-peer-deps @napi-rs/canvas
 
 # Download and install task-runner-launcher
 RUN ARCH=$(uname -m) && \
