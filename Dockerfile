@@ -1,5 +1,5 @@
 # Custom n8n Docker image based on Debian with Playwright support
-FROM node:22-bookworm-slim
+FROM node:22-trixie
 
 # Set environment variables
 ENV N8N_VERSION=latest \
