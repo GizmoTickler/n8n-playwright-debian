@@ -47,11 +47,8 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create n8n user
-RUN useradd -m -u 1000 -s /bin/bash n8n
-
-# Set working directory
-WORKDIR /home/n8n
+# Set working directory (using existing node user from base image)
+WORKDIR /home/node
 
 # Install n8n globally
 RUN npm install -g n8n@${N8N_VERSION}
@@ -60,18 +57,18 @@ RUN npm install -g n8n@${N8N_VERSION}
 RUN npm install -g playwright && \
     npx playwright install chromium --with-deps
 
-# Create necessary directories
-RUN mkdir -p /home/n8n/.n8n && \
-    chown -R n8n:n8n /home/n8n
+# Create necessary directories and set permissions
+RUN mkdir -p /home/node/.n8n && \
+    chown -R node:node /home/node
 
-# Switch to n8n user
-USER n8n
+# Switch to node user
+USER node
 
 # Expose n8n default port
 EXPOSE 5678
 
 # Set up volume for n8n data
-VOLUME ["/home/n8n/.n8n"]
+VOLUME ["/home/node/.n8n"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

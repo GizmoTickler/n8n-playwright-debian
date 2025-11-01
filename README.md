@@ -18,7 +18,7 @@ docker pull ghcr.io/gizmotickler/n8n-playwright-debian:latest
 
 docker run -it --rm \
   -p 5678:5678 \
-  -v n8n_data:/home/n8n/.n8n \
+  -v n8n_data:/home/node/.n8n \
   ghcr.io/gizmotickler/n8n-playwright-debian:latest
 ```
 
@@ -33,7 +33,7 @@ services:
     ports:
       - "5678:5678"
     volumes:
-      - n8n_data:/home/n8n/.n8n
+      - n8n_data:/home/node/.n8n
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=admin
