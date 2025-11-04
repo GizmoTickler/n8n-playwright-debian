@@ -168,9 +168,9 @@ This repository uses:
 
 Every build includes:
 - **Trivy Vulnerability Scanning**: Scans for CRITICAL and HIGH severity vulnerabilities
-- **SARIF Reports**: Uploaded to GitHub Security for tracking
-- **SBOM Generation**: Software Bill of Materials for supply chain security
-- **Provenance Attestation**: Build provenance for verification
+- **SARIF Reports**: Uploaded to GitHub Security for tracking and monitoring
+
+Note: SBOM and provenance attestation are currently disabled due to known compatibility issues with multi-platform builds on GitHub Container Registry.
 
 ### Build Options
 
