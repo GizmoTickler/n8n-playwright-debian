@@ -11,7 +11,20 @@ on:
     branches:
       - main
       - master
+  # Schedule weekly builds to catch base image and n8n updates
+  schedule:
+    # Run every Monday at 2 AM UTC
+    - cron: '0 2 * * 1'
   workflow_dispatch:
+    inputs:
+      n8n_version:
+        description: 'n8n version to build (default: latest)'
+        required: false
+        default: 'latest'
+      task_runner_version:
+        description: 'Task Runner Launcher version'
+        required: false
+        default: '1.4.0'
 
 env:
   REGISTRY: ghcr.io
@@ -23,6 +36,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write  # For uploading Trivy SARIF results
+      id-token: write  # For provenance attestation
 
     steps:
       - name: Checkout repository
@@ -58,11 +73,32 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Enable provenance and SBOM for supply chain security
+          provenance: true
+          sbom: true
           build-args: |
-            N8N_VERSION=latest
+            N8N_VERSION=${{ github.event.inputs.n8n_version || 'latest' }}
+            TASK_RUNNER_LAUNCHER_VERSION=${{ github.event.inputs.task_runner_version || '1.4.0' }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        if: github.event_name != 'pull_request'
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: github.event_name != 'pull_request'
+        with:
+          sarif_file: 'trivy-results.sarif'
