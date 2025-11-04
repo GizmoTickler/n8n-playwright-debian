@@ -88,11 +88,28 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             VCS_REF=${{ github.sha }}
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+      - name: Extract image tag for scanning
+        id: scan-tag
         if: github.event_name != 'pull_request'
+        run: |
+          # Extract the first tag from the metadata output
+          SCAN_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          echo "tag=${SCAN_TAG}" >> $GITHUB_OUTPUT
+          echo "Scanning image: ${SCAN_TAG}"
+
+      - name: Wait for registry sync
+        if: github.event_name != 'pull_request'
+        run: sleep 10
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        if: github.event_name != 'pull_request'
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build-and-push.outputs.digest }}
+          scan-type: 'image'
+          image-ref: ${{ steps.scan-tag.outputs.tag }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
