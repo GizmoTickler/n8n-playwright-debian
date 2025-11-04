@@ -146,12 +146,41 @@ docker run -e N8N_RUNNERS_MAX_CONCURRENCY=5 \
            ghcr.io/gizmotickler/n8n-playwright-debian:latest
 ```
 
-## GitHub Container Registry
+## Automated Builds & Updates
+
+### GitHub Container Registry
 
 Images are automatically built and published to GitHub Container Registry (GHCR) on:
-- Push to main/master branch (tagged as `latest`)
-- Git tags matching `v*` pattern (tagged with version)
-- Manual workflow dispatch
+- **Code Changes**: Push to main/master branch (tagged as `latest`)
+- **Version Tags**: Git tags matching `v*` pattern (tagged with version)
+- **Scheduled Builds**: Weekly on Mondays at 2 AM UTC to catch base image and n8n updates
+- **Manual Dispatch**: Trigger builds manually with custom n8n and task-runner versions
+
+### Automated Dependency Updates
+
+This repository uses:
+- **Dependabot**: Automatically monitors and creates PRs for:
+  - GitHub Actions updates
+  - Docker base image (node:22-trixie) updates
+- **Scheduled Builds**: Weekly automated builds ensure the latest n8n version and security patches
+
+### Security Scanning
+
+Every build includes:
+- **Trivy Vulnerability Scanning**: Scans for CRITICAL and HIGH severity vulnerabilities
+- **SARIF Reports**: Uploaded to GitHub Security for tracking
+- **SBOM Generation**: Software Bill of Materials for supply chain security
+- **Provenance Attestation**: Build provenance for verification
+
+### Build Options
+
+You can trigger manual builds with specific versions via GitHub Actions:
+```bash
+# Via GitHub UI: Actions → Build and Publish Docker Image → Run workflow
+# Specify:
+#   - n8n version (default: latest)
+#   - task-runner-launcher version (default: 1.4.0)
+```
 
 ## License
 
