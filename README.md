@@ -7,7 +7,7 @@ Custom n8n Docker image based on Debian with Playwright and Chromium pre-install
 - **Base Image**: Debian Trixie (node:22-trixie)
 - **n8n**: Latest version installed globally
 - **Playwright**: Pre-installed with Chromium browser
-- **Platform Support**: linux/amd64 and linux/arm64
+- **Platform Support**: linux/amd64
 - **Additional Tools**:
   - GraphicsMagick for image processing
   - jq for JSON processing
@@ -168,9 +168,9 @@ This repository uses:
 
 Every build includes:
 - **Trivy Vulnerability Scanning**: Scans for CRITICAL and HIGH severity vulnerabilities
-- **SARIF Reports**: Uploaded to GitHub Security for tracking and monitoring
-
-Note: SBOM and provenance attestation are currently disabled due to known compatibility issues with multi-platform builds on GitHub Container Registry.
+- **SARIF Reports**: Uploaded to GitHub Security for tracking
+- **SBOM Generation**: Software Bill of Materials for supply chain transparency
+- **Provenance Attestation**: Build provenance for verification and trust
 
 ### Build Options
 
