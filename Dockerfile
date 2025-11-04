@@ -87,22 +87,12 @@ RUN cd /usr/local/lib/node_modules/n8n && \
     cd node_modules/pdfjs-dist && \
     npm install --no-save --legacy-peer-deps @napi-rs/canvas
 
-# Download and install task-runner-launcher
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        ARCH="amd64"; \
-        CHECKSUM="f4831a3859c4551597925a5f62fa544ef06733b2f875b612745ee458321c75e7"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        ARCH="arm64"; \
-        CHECKSUM="1e9a37cfff1d5a631edbd4610e84d78b8d680a2e4731a7a7b9e18edddf6fae37"; \
-    else \
-        echo "Unsupported architecture: $ARCH" && exit 1; \
-    fi && \
-    echo "Downloading task-runner-launcher v${TASK_RUNNER_LAUNCHER_VERSION} for ${ARCH}..." && \
+# Download and install task-runner-launcher (amd64 only)
+RUN echo "Downloading task-runner-launcher v${TASK_RUNNER_LAUNCHER_VERSION} for amd64..." && \
     wget --progress=dot:giga -O /tmp/task-runner-launcher.tar.gz \
-        "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-${ARCH}.tar.gz" && \
+        "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz" && \
     echo "Verifying checksum..." && \
-    echo "${CHECKSUM}  /tmp/task-runner-launcher.tar.gz" | sha256sum -c - && \
+    echo "f4831a3859c4551597925a5f62fa544ef06733b2f875b612745ee458321c75e7  /tmp/task-runner-launcher.tar.gz" | sha256sum -c - && \
     echo "Extracting archive..." && \
     tar -xzf /tmp/task-runner-launcher.tar.gz -C /tmp && \
     chmod +x /tmp/task-runner-launcher && \
