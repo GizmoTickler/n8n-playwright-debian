@@ -57,16 +57,6 @@
 
   "regexManagers": [
     {
-      "description": "Track n8n's Node version from their upstream Dockerfile",
-      "fileMatch": ["^Dockerfile$"],
-      "matchStrings": [
-        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\s+ARG NODE_VERSION=(?<currentValue>.*)\\s"
-      ],
-      "datasourceTemplate": "github-tags",
-      "depNameTemplate": "nodejs/node",
-      "versioningTemplate": "node"
-    },
-    {
       "description": "Track n8n npm package version in Dockerfile",
       "fileMatch": ["^Dockerfile$"],
       "matchStrings": [
@@ -110,7 +100,7 @@
 
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "🤖 Renovate Dependency Dashboard",
-  "dependencyDashboardHeader": "This dashboard tracks all dependency updates for n8n-playwright-debian.\n\n**Important:** Node version is automatically tracked from [n8n's upstream Dockerfile](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/Dockerfile).",
+  "dependencyDashboardHeader": "This dashboard tracks all dependency updates for n8n-playwright-debian.\n\n**Note:** Node version is automatically tracked via GitHub Actions from [n8n's upstream Dockerfile](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/Dockerfile) (not shown here).",
 
   "suppressNotifications": ["prIgnoreNotification"]
 }

@@ -1,0 +1,154 @@
+name: Sync Node Version from n8n Upstream
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allow manual trigger
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/sync-n8n-node-version.yml'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-node-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch n8n upstream Dockerfile
+        id: fetch-upstream
+        run: |
+          echo "Fetching n8n's Dockerfile..."
+          UPSTREAM_DOCKERFILE=$(curl -sSL https://raw.githubusercontent.com/n8n-io/n8n/master/docker/images/n8n/Dockerfile)
+
+          # Extract NODE_VERSION from upstream
+          UPSTREAM_NODE_VERSION=$(echo "$UPSTREAM_DOCKERFILE" | grep -oP '^ARG NODE_VERSION=\K[0-9.]+' | head -1)
+
+          if [ -z "$UPSTREAM_NODE_VERSION" ]; then
+            echo "❌ Failed to extract Node version from n8n's Dockerfile"
+            exit 1
+          fi
+
+          echo "upstream_node_version=$UPSTREAM_NODE_VERSION" >> $GITHUB_OUTPUT
+          echo "✅ n8n upstream Node version: $UPSTREAM_NODE_VERSION"
+
+      - name: Check current Node version
+        id: check-current
+        run: |
+          # Extract NODE_VERSION from our Dockerfile
+          CURRENT_NODE_VERSION=$(grep -oP '^ARG NODE_VERSION=\K[0-9.]+' Dockerfile | head -1)
+
+          if [ -z "$CURRENT_NODE_VERSION" ]; then
+            echo "❌ Failed to extract Node version from local Dockerfile"
+            exit 1
+          fi
+
+          echo "current_node_version=$CURRENT_NODE_VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Current Node version: $CURRENT_NODE_VERSION"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          UPSTREAM="${{ steps.fetch-upstream.outputs.upstream_node_version }}"
+          CURRENT="${{ steps.check-current.outputs.current_node_version }}"
+
+          echo "Comparing versions:"
+          echo "  Upstream (n8n): $UPSTREAM"
+          echo "  Current (ours): $CURRENT"
+
+          if [ "$UPSTREAM" != "$CURRENT" ]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "🔄 Update needed: $CURRENT → $UPSTREAM"
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "✅ Already in sync!"
+          fi
+
+      - name: Update Dockerfile
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          UPSTREAM="${{ steps.fetch-upstream.outputs.upstream_node_version }}"
+          CURRENT="${{ steps.check-current.outputs.current_node_version }}"
+
+          echo "Updating NODE_VERSION in Dockerfile..."
+          sed -i "s/^ARG NODE_VERSION=$CURRENT/ARG NODE_VERSION=$UPSTREAM/" Dockerfile
+
+          # Verify the change
+          if grep -q "ARG NODE_VERSION=$UPSTREAM" Dockerfile; then
+            echo "✅ Successfully updated NODE_VERSION to $UPSTREAM"
+          else
+            echo "❌ Failed to update NODE_VERSION"
+            exit 1
+          fi
+
+      - name: Create Pull Request
+        if: steps.compare.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore(deps): update Node.js to v${{ steps.fetch-upstream.outputs.upstream_node_version }}
+
+            Synced from n8n upstream Dockerfile to ensure 100% compatibility.
+
+            Changes:
+            - Node.js: ${{ steps.check-current.outputs.current_node_version }} → ${{ steps.fetch-upstream.outputs.upstream_node_version }}
+
+            Source: https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/Dockerfile
+          branch: automated/sync-node-version-${{ steps.fetch-upstream.outputs.upstream_node_version }}
+          delete-branch: true
+          title: "chore(deps): update Node.js to v${{ steps.fetch-upstream.outputs.upstream_node_version }}"
+          body: |
+            ## 🔄 Node.js Version Update
+
+            This automated PR updates the Node.js version to match n8n's upstream configuration.
+
+            ### Changes
+            - **Node.js**: `${{ steps.check-current.outputs.current_node_version }}` → `${{ steps.fetch-upstream.outputs.upstream_node_version }}`
+
+            ### Why?
+            n8n has updated their Node.js version in their official Dockerfile. To ensure 100% compatibility with the n8n npm package, we need to use the same Node.js version.
+
+            ### Source
+            - [n8n's Dockerfile](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/Dockerfile)
+
+            ### Testing
+            This change will trigger a Docker build. Please verify:
+            - [ ] Docker build succeeds
+            - [ ] n8n starts successfully
+            - [ ] Playwright integration works
+
+            ---
+
+            🤖 This PR was automatically created by the [sync-n8n-node-version workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/sync-n8n-node-version.yml)
+          labels: |
+            dependencies
+            nodejs
+            automated
+          draft: false
+
+      - name: Summary
+        run: |
+          echo "### Node Version Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Version |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| n8n upstream | ${{ steps.fetch-upstream.outputs.upstream_node_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Current (ours) | ${{ steps.check-current.outputs.current_node_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Update needed | ${{ steps.compare.outputs.needs_update }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.compare.outputs.needs_update }}" == "true" ]; then
+            echo "✅ Pull request created to update Node.js version" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Already in sync with n8n upstream" >> $GITHUB_STEP_SUMMARY
+          fi

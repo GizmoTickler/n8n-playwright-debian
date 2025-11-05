@@ -1,15 +1,17 @@
-# Migration from Dependabot to Renovate
+# Migration from Dependabot to Renovate + GitHub Actions
 
-## Why Renovate?
+## Why Renovate + GitHub Actions?
 
-This project has migrated from Dependabot to Renovate for better dependency management, particularly to automatically track n8n's Node version from their upstream Dockerfile.
+This project has migrated from Dependabot to a hybrid approach using Renovate for most dependencies and GitHub Actions for tracking n8n's Node version from their upstream Dockerfile.
 
 ## Key Benefits
 
-### 1. Automatic Node Version Tracking
+### 1. Automatic Node Version Tracking (GitHub Actions)
 **Problem:** n8n updates their Node version periodically, and we need to stay in sync to ensure 100% compatibility.
 
-**Solution:** Renovate uses regex managers to track the Node version directly from [n8n's Dockerfile](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/Dockerfile). When n8n updates their Node version, Renovate will automatically create a PR to update ours.
+**Solution:** A GitHub Actions workflow (`.github/workflows/sync-n8n-node-version.yml`) automatically fetches n8n's Node version from [their Dockerfile](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/Dockerfile) daily. When n8n updates their Node version, the workflow automatically creates a PR to update ours.
+
+**Why not Renovate for Node?** Renovate cannot directly track values from external repository files. GitHub Actions provides a simple, reliable solution specifically for this use case.
 
 ### 2. Better Dependency Coverage
 - **npm packages**: Tracks n8n core package updates
@@ -28,39 +30,41 @@ This project has migrated from Dependabot to Renovate for better dependency mana
 - Tracks Node version source with links to upstream
 - Clear PR descriptions with changelogs
 
-## Comparison: Dependabot vs Renovate
+## Comparison: Dependabot vs Renovate + GitHub Actions
 
-| Feature | Dependabot | Renovate |
-|---------|-----------|----------|
-| Track n8n's upstream Node version | ❌ Manual | ✅ Automatic |
-| npm package updates | ❌ Not configured | ✅ Yes |
-| Docker image updates | ✅ Yes | ✅ Yes (better) |
-| GitHub Actions updates | ✅ Yes | ✅ Yes |
-| Auto-merge safe updates | ❌ Limited | ✅ Configurable |
-| Grouped updates | ❌ No | ✅ Yes |
-| Dependency dashboard | ❌ No | ✅ Yes |
-| Regex managers for custom tracking | ❌ No | ✅ Yes |
+| Feature | Dependabot | Renovate + GitHub Actions |
+|---------|-----------|---------------------------|
+| Track n8n's upstream Node version | ❌ Manual | ✅ Automatic (GitHub Actions) |
+| npm package updates | ❌ Not configured | ✅ Yes (Renovate) |
+| Docker image updates | ✅ Yes | ✅ Yes (Renovate - better) |
+| GitHub Actions updates | ✅ Yes | ✅ Yes (Renovate) |
+| Auto-merge safe updates | ❌ Limited | ✅ Configurable (Renovate) |
+| Grouped updates | ❌ No | ✅ Yes (Renovate) |
+| Dependency dashboard | ❌ No | ✅ Yes (Renovate) |
+| Regex managers for custom tracking | ❌ No | ✅ Yes (Renovate) |
 
 ## How It Works
 
-### Node Version Tracking
+### Node Version Tracking (GitHub Actions)
 
-The Dockerfile now includes a special comment:
+A daily GitHub Actions workflow (`.github/workflows/sync-n8n-node-version.yml`) automatically:
+1. Fetches n8n's Dockerfile from `https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/Dockerfile`
+2. Extracts their `NODE_VERSION` using regex
+3. Compares it with our Dockerfile's `NODE_VERSION`
+4. If different, automatically creates a PR with:
+   - Updated Node version in Dockerfile
+   - Detailed description explaining the change
+   - Link to n8n's upstream source
+   - Testing checklist
 
-```dockerfile
-# renovate: datasource=github-tags depName=nodejs/node versioning=node
-ARG NODE_VERSION=22.21.0
-```
+**Workflow Schedule:**
+- Runs daily at 6 AM UTC
+- Can be triggered manually via GitHub Actions UI
+- Also runs when the workflow file itself is updated
 
-Renovate reads this comment and:
-1. Monitors Node.js releases via GitHub tags
-2. Checks if n8n has updated their Node version
-3. Creates a PR when a new version is available
-4. Updates both the ARG and any related references
+### n8n Package Tracking (Renovate)
 
-### n8n Package Tracking
-
-The regex manager also tracks the n8n npm package version:
+Renovate's regex manager tracks the n8n npm package version:
 
 ```dockerfile
 ARG N8N_VERSION=1.117.3
@@ -73,7 +77,19 @@ When n8n releases a new version, Renovate will:
 
 ## Migration Steps
 
-### 1. Enable Renovate (One-time setup)
+### 1. Enable GitHub Actions Workflow (Already Configured!)
+
+The Node version sync workflow (`.github/workflows/sync-n8n-node-version.yml`) is automatically enabled once the file is in your repository. It will:
+- Run daily at 6 AM UTC
+- Can be triggered manually from the Actions tab
+- Automatically create PRs when n8n's Node version changes
+
+**To manually trigger:**
+1. Go to your repository's "Actions" tab
+2. Select "Sync Node Version from n8n Upstream"
+3. Click "Run workflow"
+
+### 2. Enable Renovate (One-time setup)
 
 **Option A: GitHub App (Recommended)**
 1. Go to https://github.com/apps/renovate
@@ -84,7 +100,7 @@ When n8n releases a new version, Renovate will:
 **Option B: Self-hosted**
 Follow the [Renovate self-hosted documentation](https://docs.renovatebot.com/getting-started/running/)
 
-### 2. Remove Dependabot (After Renovate is working)
+### 3. Remove Dependabot (After Renovate is working)
 
 Once Renovate is enabled and working:
 
@@ -98,7 +114,13 @@ git commit -m "chore: remove dependabot config (migrated to renovate)"
 git push
 ```
 
-### 3. Monitor the Dependency Dashboard
+### 4. Monitor Updates
+
+**Node Version (GitHub Actions):**
+- Check the Actions tab for workflow runs
+- PRs will be automatically created when n8n updates Node
+
+**Other Dependencies (Renovate):**
 
 Renovate will create an issue titled "🤖 Renovate Dependency Dashboard" that shows:
 - All pending updates
@@ -116,6 +138,11 @@ The following updates are auto-merged:
 
 ### Update Schedule
 
+**GitHub Actions (Node Version):**
+- **Daily check**: 6 AM UTC
+- **Manual trigger**: Available anytime via Actions tab
+
+**Renovate (Other Dependencies):**
 - **Regular updates**: Monday mornings (before 6am UTC)
 - **Security updates**: Anytime (immediate)
 
