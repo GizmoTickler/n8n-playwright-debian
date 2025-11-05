@@ -2,7 +2,7 @@
 FROM node:22-trixie
 
 # Accept build arguments for version control
-ARG N8N_VERSION=latest
+ARG N8N_VERSION=1.117.3
 ARG TASK_RUNNER_LAUNCHER_VERSION=1.4.0
 ARG BUILD_DATE
 ARG VCS_REF
