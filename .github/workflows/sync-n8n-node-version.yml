@@ -28,7 +28,7 @@ jobs:
         id: fetch-upstream
         run: |
           echo "Fetching n8n's Dockerfile..."
-          UPSTREAM_DOCKERFILE=$(curl -sSL https://raw.githubusercontent.com/n8n-io/n8n/refs/heads/master/docker/images/n8n/Dockerfile)
+          UPSTREAM_DOCKERFILE=$(curl -sSL https://raw.githubusercontent.com/n8n-io/n8n/master/docker/images/n8n/Dockerfile)
 
           # Extract NODE_VERSION from upstream
           UPSTREAM_NODE_VERSION=$(echo "$UPSTREAM_DOCKERFILE" | grep -oP '^ARG NODE_VERSION=\K[0-9.]+' | head -1)
