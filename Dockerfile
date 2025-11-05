@@ -1,4 +1,5 @@
 # Custom n8n Docker image based on Debian with Playwright support
+# renovate: datasource=github-tags depName=nodejs/node versioning=node
 ARG NODE_VERSION=22.21.0
 
 FROM node:${NODE_VERSION}-trixie

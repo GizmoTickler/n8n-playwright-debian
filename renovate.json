@@ -1,0 +1,116 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "UTC",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "separateMinorPatch": true,
+  "rangeStrategy": "pin",
+  "semanticCommits": "enabled",
+  "commitMessagePrefix": "chore(deps):",
+
+  "packageRules": [
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "addLabels": ["github-actions"],
+      "automerge": false,
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "Auto-merge non-major Docker updates",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+      "addLabels": ["docker", "automerge"]
+    },
+    {
+      "description": "Track n8n npm package",
+      "matchPackageNames": ["n8n"],
+      "addLabels": ["n8n"],
+      "automerge": false,
+      "groupName": "n8n core",
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "Track Playwright",
+      "matchPackageNames": ["playwright"],
+      "addLabels": ["playwright"],
+      "automerge": false
+    },
+    {
+      "description": "Critical security updates - high priority",
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "!/^0/",
+      "vulnerabilitySeverity": "critical,high",
+      "labels": ["security", "priority-high"],
+      "automerge": true
+    }
+  ],
+
+  "regexManagers": [
+    {
+      "description": "Track n8n's Node version from their upstream Dockerfile",
+      "fileMatch": ["^Dockerfile$"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\s+ARG NODE_VERSION=(?<currentValue>.*)\\s"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "nodejs/node",
+      "versioningTemplate": "node"
+    },
+    {
+      "description": "Track n8n npm package version in Dockerfile",
+      "fileMatch": ["^Dockerfile$"],
+      "matchStrings": [
+        "ARG N8N_VERSION=(?<currentValue>.*?)\\s"
+      ],
+      "datasourceTemplate": "npm",
+      "depNameTemplate": "n8n"
+    },
+    {
+      "description": "Track task-runner-launcher version and checksum",
+      "fileMatch": ["^Dockerfile$"],
+      "matchStrings": [
+        "ARG TASK_RUNNER_LAUNCHER_VERSION=(?<currentValue>.*?)\\s[\\s\\S]*?echo \"(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "n8n-io/task-runner-launcher",
+      "currentValueTemplate": "{{currentValue}}",
+      "autoReplaceStringTemplate": "ARG TASK_RUNNER_LAUNCHER_VERSION={{newValue}}\n{{#if newDigest}}    echo \"{{newDigest}}{{/if}}"
+    }
+  ],
+
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update npm packages installed via RUN npm install",
+      "fileMatch": ["^Dockerfile$"],
+      "matchStrings": [
+        "RUN npm install -g n8n@\\$\\{N8N_VERSION\\}"
+      ],
+      "datasourceTemplate": "npm",
+      "depNameTemplate": "n8n"
+    }
+  ],
+
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "automerge": true,
+    "schedule": ["at any time"]
+  },
+
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Renovate Dependency Dashboard",
+  "dependencyDashboardHeader": "This dashboard tracks all dependency updates for n8n-playwright-debian.\n\n**Important:** Node version is automatically tracked from [n8n's upstream Dockerfile](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/Dockerfile).",
+
+  "suppressNotifications": ["prIgnoreNotification"]
+}
