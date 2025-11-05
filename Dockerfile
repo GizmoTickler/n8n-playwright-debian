@@ -1,4 +1,6 @@
 # Custom n8n Docker image based on Debian with Playwright support
+# Node version is automatically synced from n8n's upstream via GitHub Actions
+# See: .github/workflows/sync-n8n-node-version.yml
 ARG NODE_VERSION=22.21.0
 
 FROM node:${NODE_VERSION}-trixie
