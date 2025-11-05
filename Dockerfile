@@ -1,9 +1,11 @@
 # Custom n8n Docker image based on Debian with Playwright support
-FROM node:22-trixie
+ARG NODE_VERSION=22.21.0
+
+FROM node:${NODE_VERSION}-trixie
 
 # Accept build arguments for version control
 ARG N8N_VERSION=1.117.3
-ARG TASK_RUNNER_LAUNCHER_VERSION=1.4.0
+ARG TASK_RUNNER_LAUNCHER_VERSION=1.4.1
 ARG BUILD_DATE
 ARG VCS_REF
 
