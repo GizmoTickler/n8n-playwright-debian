@@ -95,13 +95,12 @@ RUN npm install -g n8n@${N8N_VERSION} full-icu && \
     npm cache clean --force
 
 # Download and install task-runner-launcher (amd64 only)
-# renovate: datasource=github-releases depName=n8n-io/task-runner-launcher
-ARG TASK_RUNNER_CHECKSUM=f4831a3859c4551597925a5f62fa544ef06733b2f875b612745ee458321c75e7
+# Checksum for v1.4.1 - update when version changes
 RUN echo "Downloading task-runner-launcher v${TASK_RUNNER_LAUNCHER_VERSION} for amd64..." && \
     wget --progress=dot:giga -O /tmp/task-runner-launcher.tar.gz \
         "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz" && \
     echo "Verifying checksum..." && \
-    echo "${TASK_RUNNER_CHECKSUM}  /tmp/task-runner-launcher.tar.gz" | sha256sum -c - && \
+    echo "f4831a3859c4551597925a5f62fa544ef06733b2f875b612745ee458321c75e7  /tmp/task-runner-launcher.tar.gz" | sha256sum -c - && \
     echo "Extracting archive..." && \
     tar -xzf /tmp/task-runner-launcher.tar.gz -C /tmp && \
     chmod +x /tmp/task-runner-launcher && \
