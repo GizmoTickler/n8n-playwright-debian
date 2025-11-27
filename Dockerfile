@@ -95,21 +95,19 @@ RUN npm install -g n8n@${N8N_VERSION} full-icu && \
     npm cache clean --force
 
 # Download and install task-runner-launcher (amd64 only)
-# Downloads checksum dynamically to stay in sync with version updates
+# Downloads checksum dynamically to stay in sync with version updates (matches official n8n approach)
 RUN echo "Downloading task-runner-launcher v${TASK_RUNNER_LAUNCHER_VERSION} for amd64..." && \
-    cd /tmp && \
-    wget -q -O task-runner-launcher.tar.gz \
-        "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz" && \
-    wget -q -O checksum.sha256 \
-        "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz.sha256" && \
+    mkdir -p /tmp/launcher && cd /tmp/launcher && \
+    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz" && \
+    wget -q "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz.sha256" && \
     echo "Verifying checksum..." && \
-    sed -i "s|task-runner-launcher-.*-linux-amd64.tar.gz|task-runner-launcher.tar.gz|" checksum.sha256 && \
+    echo "$(cat task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz.sha256)  task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz" > checksum.sha256 && \
     sha256sum -c checksum.sha256 && \
     echo "Extracting archive..." && \
-    tar -xzf task-runner-launcher.tar.gz && \
+    tar -xzf task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz && \
     chmod +x task-runner-launcher && \
     mv task-runner-launcher /usr/local/bin/task-runner-launcher && \
-    rm -f task-runner-launcher.tar.gz checksum.sha256 && \
+    cd / && rm -rf /tmp/launcher && \
     echo "Task runner launcher installed successfully"
 
 # Install Playwright with Chromium (use npx directly, no need for global install)
