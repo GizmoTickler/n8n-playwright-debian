@@ -10,6 +10,7 @@
 README.md
 LICENSE
 *.md
+CHANGELOG*
 
 # IDE
 .vscode
@@ -17,20 +18,41 @@ LICENSE
 *.swp
 *.swo
 *~
+.editorconfig
 
 # OS
 .DS_Store
 Thumbs.db
+ehthumbs.db
 
 # Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Dependencies (will be installed in image)
 node_modules
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Build artifacts
 dist
 build
+coverage
+.nyc_output
+
+# Test files
+*.test.*
+*.spec.*
+__tests__
+tests
+
+# Environment files (never include secrets in image)
+.env*
+!.env.example
+
+# Renovate config (not needed in image)
+renovate.json

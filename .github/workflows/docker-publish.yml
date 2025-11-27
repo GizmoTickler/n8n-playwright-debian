@@ -24,7 +24,7 @@ on:
       task_runner_version:
         description: 'Task Runner Launcher version'
         required: false
-        default: '1.4.0'
+        default: '1.4.1'
 
 env:
   REGISTRY: ghcr.io
@@ -53,6 +53,15 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract versions from Dockerfile
+        id: versions
+        run: |
+          N8N_VER=$(grep -oP '^ARG N8N_VERSION=\K[0-9.]+' Dockerfile | head -1)
+          RUNNER_VER=$(grep -oP '^ARG TASK_RUNNER_LAUNCHER_VERSION=\K[0-9.]+' Dockerfile | head -1)
+          echo "n8n_version=${N8N_VER}" >> $GITHUB_OUTPUT
+          echo "task_runner_version=${RUNNER_VER}" >> $GITHUB_OUTPUT
+          echo "📦 Dockerfile versions - n8n: ${N8N_VER}, task-runner: ${RUNNER_VER}"
 
       - name: Extract Docker metadata
         id: meta
@@ -83,8 +92,8 @@ jobs:
           provenance: true
           sbom: true
           build-args: |
-            N8N_VERSION=${{ github.event.inputs.n8n_version || 'latest' }}
-            TASK_RUNNER_LAUNCHER_VERSION=${{ github.event.inputs.task_runner_version || '1.4.0' }}
+            N8N_VERSION=${{ github.event.inputs.n8n_version || steps.versions.outputs.n8n_version }}
+            TASK_RUNNER_LAUNCHER_VERSION=${{ github.event.inputs.task_runner_version || steps.versions.outputs.task_runner_version }}
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             VCS_REF=${{ github.sha }}
 
@@ -97,9 +106,28 @@ jobs:
           echo "tag=${SCAN_TAG}" >> $GITHUB_OUTPUT
           echo "Scanning image: ${SCAN_TAG}"
 
-      - name: Wait for registry sync
+      - name: Wait for registry sync with retry
         if: github.event_name != 'pull_request'
-        run: sleep 10
+        run: |
+          IMAGE_TAG="${{ steps.scan-tag.outputs.tag }}"
+          MAX_ATTEMPTS=5
+          WAIT_TIME=5
+
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $i/$MAX_ATTEMPTS: Checking if image is available..."
+            if docker manifest inspect "$IMAGE_TAG" > /dev/null 2>&1; then
+              echo "✅ Image is available in registry"
+              exit 0
+            fi
+            if [ $i -lt $MAX_ATTEMPTS ]; then
+              echo "Image not yet available, waiting ${WAIT_TIME}s..."
+              sleep $WAIT_TIME
+              WAIT_TIME=$((WAIT_TIME * 2))
+            fi
+          done
+          echo "⚠️ Image may not be fully synced, proceeding anyway..."
+        env:
+          DOCKER_CONFIG: /home/runner/.docker
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.33.1
@@ -113,9 +141,12 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          cache-dir: /home/runner/.cache/trivy
+          timeout: '10m'
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: github.event_name != 'pull_request'
+        continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
