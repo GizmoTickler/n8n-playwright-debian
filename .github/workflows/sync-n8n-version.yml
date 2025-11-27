@@ -1,0 +1,161 @@
+name: Sync n8n Version from Official Releases
+
+on:
+  schedule:
+    # Run twice daily at 6 AM and 6 PM UTC to catch new releases quickly
+    - cron: '0 6,18 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-n8n-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch latest n8n version from npm
+        id: fetch-latest
+        run: |
+          echo "Fetching latest n8n version from npm..."
+          LATEST_VERSION=$(npm view n8n version 2>/dev/null)
+
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "❌ Failed to fetch n8n version from npm"
+            exit 1
+          fi
+
+          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Latest n8n version on npm: $LATEST_VERSION"
+
+      - name: Check current n8n version
+        id: check-current
+        run: |
+          # Extract N8N_VERSION from our Dockerfile
+          CURRENT_VERSION=$(grep -oP '^ARG N8N_VERSION=\K[0-9.]+' Dockerfile | head -1)
+
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "❌ Failed to extract n8n version from local Dockerfile"
+            exit 1
+          fi
+
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Current n8n version: $CURRENT_VERSION"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          LATEST="${{ steps.fetch-latest.outputs.latest_version }}"
+          CURRENT="${{ steps.check-current.outputs.current_version }}"
+
+          echo "Comparing versions:"
+          echo "  Latest (npm): $LATEST"
+          echo "  Current (ours): $CURRENT"
+
+          if [ "$LATEST" != "$CURRENT" ]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "🔄 Update needed: $CURRENT → $LATEST"
+
+            # Determine update type
+            CURRENT_MAJOR=$(echo $CURRENT | cut -d. -f1)
+            CURRENT_MINOR=$(echo $CURRENT | cut -d. -f2)
+            LATEST_MAJOR=$(echo $LATEST | cut -d. -f1)
+            LATEST_MINOR=$(echo $LATEST | cut -d. -f2)
+
+            if [ "$LATEST_MAJOR" != "$CURRENT_MAJOR" ]; then
+              echo "update_type=major" >> $GITHUB_OUTPUT
+            elif [ "$LATEST_MINOR" != "$CURRENT_MINOR" ]; then
+              echo "update_type=minor" >> $GITHUB_OUTPUT
+            else
+              echo "update_type=patch" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "✅ Already up to date!"
+          fi
+
+      - name: Update Dockerfile
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          LATEST="${{ steps.fetch-latest.outputs.latest_version }}"
+          CURRENT="${{ steps.check-current.outputs.current_version }}"
+
+          echo "Updating N8N_VERSION in Dockerfile..."
+          sed -i "s/^ARG N8N_VERSION=$CURRENT/ARG N8N_VERSION=$LATEST/" Dockerfile
+
+          # Verify the change
+          if grep -q "ARG N8N_VERSION=$LATEST" Dockerfile; then
+            echo "✅ Successfully updated N8N_VERSION to $LATEST"
+          else
+            echo "❌ Failed to update N8N_VERSION"
+            exit 1
+          fi
+
+      - name: Create Pull Request
+        if: steps.compare.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore(deps): update n8n to v${{ steps.fetch-latest.outputs.latest_version }}
+
+            Automated update from n8n npm registry.
+
+            Changes:
+            - n8n: ${{ steps.check-current.outputs.current_version }} → ${{ steps.fetch-latest.outputs.latest_version }}
+
+            Release notes: https://github.com/n8n-io/n8n/releases
+          branch: automated/sync-n8n-version-${{ steps.fetch-latest.outputs.latest_version }}
+          delete-branch: true
+          title: "chore(deps): update n8n to v${{ steps.fetch-latest.outputs.latest_version }}"
+          body: |
+            ## 🔄 n8n Version Update
+
+            This automated PR updates n8n to the latest version from npm.
+
+            ### Changes
+            - **n8n**: `${{ steps.check-current.outputs.current_version }}` → `${{ steps.fetch-latest.outputs.latest_version }}`
+            - **Update type**: `${{ steps.compare.outputs.update_type }}`
+
+            ### Release Notes
+            - [n8n Releases](https://github.com/n8n-io/n8n/releases)
+            - [n8n Changelog](https://docs.n8n.io/release-notes/)
+
+            ### Testing
+            This change will trigger a Docker build. Please verify:
+            - [ ] Docker build succeeds
+            - [ ] n8n starts successfully
+            - [ ] Existing workflows continue to work
+            - [ ] Playwright integration works
+
+            ---
+
+            🤖 This PR was automatically created by the [sync-n8n-version workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/sync-n8n-version.yml)
+          labels: |
+            dependencies
+            n8n
+            automated
+            ${{ steps.compare.outputs.update_type }}-update
+          draft: false
+
+      - name: Summary
+        run: |
+          echo "### n8n Version Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Version |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Latest (npm) | ${{ steps.fetch-latest.outputs.latest_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Current (ours) | ${{ steps.check-current.outputs.current_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Update needed | ${{ steps.compare.outputs.needs_update }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.compare.outputs.needs_update }}" == "true" ]; then
+            echo "✅ Pull request created to update n8n (${{ steps.compare.outputs.update_type }} update)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Already running the latest n8n version" >> $GITHUB_STEP_SUMMARY
+          fi
