@@ -33,7 +33,7 @@
     },
     {
       "description": "n8n patch updates - auto-merge",
-      "matchPackageNames": ["n8n"],
+      "matchPackageNames": ["n8n-io/n8n"],
       "matchUpdateTypes": ["patch"],
       "addLabels": ["n8n", "automerge"],
       "automerge": true,
@@ -41,7 +41,7 @@
     },
     {
       "description": "n8n minor/major updates - require review",
-      "matchPackageNames": ["n8n"],
+      "matchPackageNames": ["n8n-io/n8n"],
       "matchUpdateTypes": ["minor", "major"],
       "addLabels": ["n8n"],
       "automerge": false,
@@ -71,13 +71,14 @@
 
   "regexManagers": [
     {
-      "description": "Track n8n npm package version in Dockerfile",
+      "description": "Track n8n version from official GitHub releases",
       "fileMatch": ["^Dockerfile$"],
       "matchStrings": [
         "ARG N8N_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
       ],
-      "datasourceTemplate": "npm",
-      "depNameTemplate": "n8n"
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "n8n-io/n8n",
+      "extractVersionTemplate": "^n8n@(?<version>.*)$"
     },
     {
       "description": "Track task-runner-launcher version in Dockerfile",
@@ -99,7 +100,7 @@
 
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "🤖 Renovate Dependency Dashboard",
-  "dependencyDashboardHeader": "This dashboard tracks all dependency updates for n8n-playwright-debian.\n\n**Tracking:**\n- n8n version (from npm) - patch auto-merge, minor/major require review\n- Node.js version (via GitHub Actions workflow from n8n upstream)\n- Task runner launcher (from GitHub releases)\n- Playwright (manual review)",
+  "dependencyDashboardHeader": "This dashboard tracks all dependency updates for n8n-playwright-debian.\n\n**Tracking:**\n- n8n version (from official GitHub releases) - patch auto-merge, minor/major require review\n- Node.js version (via GitHub Actions workflow from n8n upstream)\n- Task runner launcher (from GitHub releases)\n- Playwright (manual review)",
 
   "suppressNotifications": ["prIgnoreNotification"]
 }

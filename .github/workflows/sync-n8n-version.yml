@@ -19,19 +19,36 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch latest n8n version from npm
+      - name: Fetch latest n8n version from GitHub releases
         id: fetch-latest
         run: |
-          echo "Fetching latest n8n version from npm..."
-          LATEST_VERSION=$(npm view n8n version 2>/dev/null)
+          echo "Fetching latest n8n release from GitHub..."
+
+          # Fetch the latest release from n8n-io/n8n GitHub releases
+          RELEASE_DATA=$(curl -sSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/n8n-io/n8n/releases/latest)
+
+          # Extract the tag name (format: n8n@1.121.3)
+          TAG_NAME=$(echo "$RELEASE_DATA" | jq -r '.tag_name')
+
+          if [ -z "$TAG_NAME" ] || [ "$TAG_NAME" == "null" ]; then
+            echo "❌ Failed to fetch n8n release from GitHub"
+            exit 1
+          fi
+
+          # Extract version number from tag (n8n@1.121.3 -> 1.121.3)
+          LATEST_VERSION=$(echo "$TAG_NAME" | sed 's/^n8n@//')
 
           if [ -z "$LATEST_VERSION" ]; then
-            echo "❌ Failed to fetch n8n version from npm"
+            echo "❌ Failed to parse version from tag: $TAG_NAME"
             exit 1
           fi
 
           echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
-          echo "✅ Latest n8n version on npm: $LATEST_VERSION"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Latest official n8n release: $LATEST_VERSION (tag: $TAG_NAME)"
 
       - name: Check current n8n version
         id: check-current
@@ -54,8 +71,8 @@ jobs:
           CURRENT="${{ steps.check-current.outputs.current_version }}"
 
           echo "Comparing versions:"
-          echo "  Latest (npm): $LATEST"
-          echo "  Current (ours): $CURRENT"
+          echo "  Latest (GitHub): $LATEST"
+          echo "  Current (ours):  $CURRENT"
 
           if [ "$LATEST" != "$CURRENT" ]; then
             echo "needs_update=true" >> $GITHUB_OUTPUT
@@ -104,27 +121,28 @@ jobs:
           commit-message: |
             chore(deps): update n8n to v${{ steps.fetch-latest.outputs.latest_version }}
 
-            Automated update from n8n npm registry.
+            Automated update from official n8n GitHub releases.
 
             Changes:
             - n8n: ${{ steps.check-current.outputs.current_version }} → ${{ steps.fetch-latest.outputs.latest_version }}
 
-            Release notes: https://github.com/n8n-io/n8n/releases
+            Source: https://github.com/n8n-io/n8n/releases/tag/${{ steps.fetch-latest.outputs.tag_name }}
           branch: automated/sync-n8n-version-${{ steps.fetch-latest.outputs.latest_version }}
           delete-branch: true
           title: "chore(deps): update n8n to v${{ steps.fetch-latest.outputs.latest_version }}"
           body: |
             ## 🔄 n8n Version Update
 
-            This automated PR updates n8n to the latest version from npm.
+            This automated PR updates n8n to the latest **official stable release**.
 
             ### Changes
             - **n8n**: `${{ steps.check-current.outputs.current_version }}` → `${{ steps.fetch-latest.outputs.latest_version }}`
             - **Update type**: `${{ steps.compare.outputs.update_type }}`
 
-            ### Release Notes
-            - [n8n Releases](https://github.com/n8n-io/n8n/releases)
-            - [n8n Changelog](https://docs.n8n.io/release-notes/)
+            ### Source
+            - [GitHub Release](${{ github.server_url }}/n8n-io/n8n/releases/tag/${{ steps.fetch-latest.outputs.tag_name }})
+            - [Docker Image](https://github.com/n8n-io/n8n/pkgs/container/n8n)
+            - [Release Notes](https://docs.n8n.io/release-notes/)
 
             ### Testing
             This change will trigger a Docker build. Please verify:
@@ -149,7 +167,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Version |" >> $GITHUB_STEP_SUMMARY
           echo "|------|---------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Latest (npm) | ${{ steps.fetch-latest.outputs.latest_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Latest (GitHub) | ${{ steps.fetch-latest.outputs.latest_version }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Current (ours) | ${{ steps.check-current.outputs.current_version }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Update needed | ${{ steps.compare.outputs.needs_update }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -157,5 +175,5 @@ jobs:
           if [ "${{ steps.compare.outputs.needs_update }}" == "true" ]; then
             echo "✅ Pull request created to update n8n (${{ steps.compare.outputs.update_type }} update)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "✅ Already running the latest n8n version" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Already running the latest official n8n release" >> $GITHUB_STEP_SUMMARY
           fi
