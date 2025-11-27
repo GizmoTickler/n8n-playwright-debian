@@ -24,12 +24,14 @@ LABEL task-runner.version="${TASK_RUNNER_LAUNCHER_VERSION}"
 
 # Set environment variables
 ENV N8N_VERSION=${N8N_VERSION} \
-    NODE_VERSION=22 \
     TASK_RUNNER_LAUNCHER_VERSION=${TASK_RUNNER_LAUNCHER_VERSION} \
     NODE_ENV=production \
     NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    # Reduce npm noise and improve performance
+    NPM_CONFIG_LOGLEVEL=warn \
+    NPM_CONFIG_UPDATE_NOTIFIER=false
 
 # Install system dependencies for n8n and Playwright
 RUN apt-get update && \
@@ -81,22 +83,25 @@ RUN apt-get update && \
 # Set working directory (using existing node user from base image)
 WORKDIR /home/node
 
-# Install n8n globally and full-icu for internationalization
-RUN npm install -g n8n@${N8N_VERSION} full-icu
-
-# Rebuild native modules for the platform
-RUN cd /usr/local/lib/node_modules/n8n && \
+# Install n8n globally with full-icu for internationalization
+# Then rebuild native modules and add canvas support for PDF rendering
+RUN npm install -g n8n@${N8N_VERSION} full-icu && \
+    cd /usr/local/lib/node_modules/n8n && \
     npm rebuild sqlite3 && \
     npm install --no-save --legacy-peer-deps @napi-rs/canvas && \
     cd node_modules/pdfjs-dist && \
-    npm install --no-save --legacy-peer-deps @napi-rs/canvas
+    npm install --no-save --legacy-peer-deps @napi-rs/canvas && \
+    # Clean npm cache to reduce image size
+    npm cache clean --force
 
 # Download and install task-runner-launcher (amd64 only)
+# renovate: datasource=github-releases depName=n8n-io/task-runner-launcher
+ARG TASK_RUNNER_CHECKSUM=f4831a3859c4551597925a5f62fa544ef06733b2f875b612745ee458321c75e7
 RUN echo "Downloading task-runner-launcher v${TASK_RUNNER_LAUNCHER_VERSION} for amd64..." && \
     wget --progress=dot:giga -O /tmp/task-runner-launcher.tar.gz \
         "https://github.com/n8n-io/task-runner-launcher/releases/download/${TASK_RUNNER_LAUNCHER_VERSION}/task-runner-launcher-${TASK_RUNNER_LAUNCHER_VERSION}-linux-amd64.tar.gz" && \
     echo "Verifying checksum..." && \
-    echo "f4831a3859c4551597925a5f62fa544ef06733b2f875b612745ee458321c75e7  /tmp/task-runner-launcher.tar.gz" | sha256sum -c - && \
+    echo "${TASK_RUNNER_CHECKSUM}  /tmp/task-runner-launcher.tar.gz" | sha256sum -c - && \
     echo "Extracting archive..." && \
     tar -xzf /tmp/task-runner-launcher.tar.gz -C /tmp && \
     chmod +x /tmp/task-runner-launcher && \
@@ -104,9 +109,11 @@ RUN echo "Downloading task-runner-launcher v${TASK_RUNNER_LAUNCHER_VERSION} for 
     rm /tmp/task-runner-launcher.tar.gz && \
     echo "Task runner launcher installed successfully"
 
-# Install Playwright with Chromium
-RUN npm install -g playwright && \
-    npx playwright install chromium --with-deps
+# Install Playwright with Chromium (use npx directly, no need for global install)
+RUN npx playwright install chromium --with-deps && \
+    # Clean npm cache again after playwright install
+    npm cache clean --force && \
+    rm -rf /tmp/*
 
 # Copy configuration and scripts
 COPY docker-entrypoint.sh /docker-entrypoint.sh

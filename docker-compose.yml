@@ -1,4 +1,5 @@
-version: '3.8'
+# Docker Compose for n8n with Playwright
+# Note: 'version' field is deprecated and ignored in modern Docker Compose
 
 services:
   n8n:
@@ -9,15 +10,20 @@ services:
       - "5678:5678"
     volumes:
       - n8n_data:/home/node/.n8n
+      # Optional: Mount custom certificates
+      # - ./certs:/opt/custom-certificates:ro
     environment:
+      # Security: Use a .env file or secrets management for production
       - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=changeme
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-changeme}
       - N8N_HOST=${N8N_HOST:-localhost}
       - N8N_PORT=5678
       - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
       - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678/}
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-UTC}
+    # Required for Playwright/Chromium to work properly
+    shm_size: '2gb'
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5678/healthz"]

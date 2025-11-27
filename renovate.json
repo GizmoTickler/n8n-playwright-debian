@@ -60,34 +60,19 @@
       "description": "Track n8n npm package version in Dockerfile",
       "fileMatch": ["^Dockerfile$"],
       "matchStrings": [
-        "ARG N8N_VERSION=(?<currentValue>.*?)\\s"
+        "ARG N8N_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
       ],
       "datasourceTemplate": "npm",
       "depNameTemplate": "n8n"
     },
     {
-      "description": "Track task-runner-launcher version and checksum",
+      "description": "Track task-runner-launcher version in Dockerfile",
       "fileMatch": ["^Dockerfile$"],
       "matchStrings": [
-        "ARG TASK_RUNNER_LAUNCHER_VERSION=(?<currentValue>.*?)\\s[\\s\\S]*?echo \"(?<currentDigest>sha256:[a-f0-9]{64})"
+        "ARG TASK_RUNNER_LAUNCHER_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
       ],
       "datasourceTemplate": "github-releases",
-      "depNameTemplate": "n8n-io/task-runner-launcher",
-      "currentValueTemplate": "{{currentValue}}",
-      "autoReplaceStringTemplate": "ARG TASK_RUNNER_LAUNCHER_VERSION={{newValue}}\n{{#if newDigest}}    echo \"{{newDigest}}{{/if}}"
-    }
-  ],
-
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Update npm packages installed via RUN npm install",
-      "fileMatch": ["^Dockerfile$"],
-      "matchStrings": [
-        "RUN npm install -g n8n@\\$\\{N8N_VERSION\\}"
-      ],
-      "datasourceTemplate": "npm",
-      "depNameTemplate": "n8n"
+      "depNameTemplate": "n8n-io/task-runner-launcher"
     }
   ],
 
